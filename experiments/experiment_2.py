@@ -17,7 +17,7 @@ sns.set_context("paper")
 
 from experiment_utils import *
 
-X, y = get_data("kuka1")
+X, y = get_data("Kuka #1")
 
 d = X.shape[1]
 
@@ -77,7 +77,7 @@ def run_experiment(N_to_plot=196000):
         return ret[n - 1 :] / n
 
     fig = plt.figure(figsize=(4, 2))
-    plt.title("Weight of Dynamic Model on Kuka1")
+    plt.title("Weight of Dynamic Model on Kuka #1")
     plt.xscale("log")
     plt.plot(moving_average(doebe_ws), label="DOEBE")
     plt.plot(moving_average(sdoebe_ws), label="E-DOEBE")

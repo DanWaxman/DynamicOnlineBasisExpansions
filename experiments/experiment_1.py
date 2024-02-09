@@ -165,13 +165,13 @@ def fit(models, X, y, n_pretrain=1000, n_batch=2500):
 
 if __name__ == "__main__":
     datasets = [
-        "friedman1",
-        "friedman2",
-        "elevators",
+        "Friedman #1",
+        "Friedman #2",
+        "Elevators",
         "SARCOS",
-        "kuka1",
-        "cadata",
-        "cpusmall",
+        "Kuka #1",
+        "CaData",
+        "CPU Small",
     ]
     N_to_pretrain = 1000
     N_trials = 10

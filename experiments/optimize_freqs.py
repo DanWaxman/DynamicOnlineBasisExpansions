@@ -2,7 +2,6 @@ from experiment_utils import *
 import jax.numpy as jnp
 import jax
 from DOEBE.doebe import DOEBE
-from DOEBE.sdoebe import SDOEBE
 from DOEBE.models import *
 from tqdm import tqdm
 import numpy as np
@@ -21,23 +20,6 @@ def make_models(X, n_features=100):
     L = np.max([np.abs(np.min(X, axis=0)), np.abs(np.max(X, axis=0))], axis=0) * 1.5
 
     ls_guesses = [(jnp.max(X, axis=0) - jnp.min(X, axis=0)) / f for f in [0.1, 1, 10]]
-    doehsgp = DOEBE(
-        [
-            DOAddHSGP(
-                L, M, d, jnp.ones(d) * ls_guess, 1.0, 1e-3, 0.25, kernel_type="rbf"
-            )
-            for ls_guess in ls_guesses
-        ]
-    )
-    oehsgp = DOEBE(
-        [
-            DOAddHSGP(
-                L, M, d, jnp.ones(d) * ls_guess, 1.0, 0.0, 0.25, kernel_type="rbf"
-            )
-            for ls_guess in ls_guesses
-        ]
-    )
-
     doegp = DOEBE(
         [
             DOGP(
@@ -53,77 +35,8 @@ def make_models(X, n_features=100):
             for ls_guess in ls_guesses
         ]
     )
-    oegp = DOEBE(
+    doegp_3 = DOEBE(
         [
-            DOGP(
-                n_features // 2,
-                "rbf",
-                d,
-                ls_guess * jnp.ones(d),
-                1.0,
-                0.0,
-                0.25,
-                train_lengthscale=True,
-            )
-            for ls_guess in ls_guesses
-        ]
-    )
-
-    rbf_points = jnp.asarray(kmeans2(X[:1000], 100, minit="points")[0])
-    mask = ~np.isnan(rbf_points).any(axis=1)
-    rbf_points = rbf_points[mask]
-    doerbf = DOEBE(
-        [
-            DORBF(
-                rbf_points,
-                ls_guess,
-                1.0,
-                1e-3,
-                0.25,
-                train_lengthscale=True,
-                train_locs=True,
-            )
-            for ls_guess in ls_guesses
-        ]
-    )
-    oerbf = DOEBE(
-        [
-            DORBF(
-                rbf_points,
-                ls_guess,
-                1.0,
-                0,
-                0.25,
-                train_lengthscale=True,
-                train_locs=True,
-            )
-            for ls_guess in ls_guesses
-        ]
-    )
-    delta = 0.01
-
-    Q = (1 - delta) * np.eye(18 * 5)
-    for i in range(15):
-        Q[i, i + 3] = delta
-        Q[i + 3, i] = delta
-    for i in range(18, 18 * 5 - 12):
-        Q[i, i + 12] = delta
-        Q[i + 12, i] = delta
-
-    sdoe = SDOEBE(
-        [
-            DOAddHSGP(
-                L, M, d, jnp.ones(d) * ls_guess, 1.0, 1e-3, 0.25, kernel_type="rbf"
-            )
-            for ls_guess in ls_guesses
-        ]
-        + [
-            DOAddHSGP(
-                L, M, d, jnp.ones(d) * ls_guess, 1.0, 0.0, 0.25, kernel_type="rbf"
-            )
-            for ls_guess in ls_guesses
-        ]
-        + [
             DOGP(
                 n_features // 2,
                 "rbf",
@@ -136,62 +49,30 @@ def make_models(X, n_features=100):
             )
             for ls_guess in ls_guesses
         ]
-        + [
+    )
+    doegp_2 = DOEBE(
+        [
             DOGP(
                 n_features // 2,
                 "rbf",
                 d,
                 ls_guess * jnp.ones(d),
                 1.0,
-                0.0,
-                0.25,
-                train_lengthscale=True,
-            )
-            for ls_guess in ls_guesses
-        ]
-        + [
-            DORBF(
-                rbf_points,
-                ls_guess,
-                1.0,
                 1e-3,
                 0.25,
                 train_lengthscale=True,
-                train_locs=True,
+                train_frequencies=True,
             )
             for ls_guess in ls_guesses
         ]
-        + [
-            DORBF(
-                rbf_points,
-                ls_guess,
-                1.0,
-                0,
-                0.25,
-                train_lengthscale=True,
-                train_locs=True,
-            )
-            for ls_guess in ls_guesses
-        ],
-        Q=jnp.asarray(Q),
     )
 
     return [
-        doehsgp,
-        oehsgp,
         doegp,
-        oegp,
-        doerbf,
-        oerbf,
-        sdoe,
+        doegp_2,
     ], [
-        "DOE-HSGP",
-        "OE-HSGP",
         "DOE-RFF",
-        "OE-RFF",
-        "DOE-RBF",
-        "OE-RBF",
-        "Our Model",
+        "DOE-OFF",
     ]
 
 
@@ -232,7 +113,7 @@ if __name__ == "__main__":
     ]
     N_to_pretrain = 1000
     N_trials = 10
-    N_models = 7
+    N_models = 2
 
     yhat_collection = []
     yvar_collection = []
@@ -252,15 +133,7 @@ if __name__ == "__main__":
 
             print("Pretraining Models")
             lrs = [1e-2] * 10
-            sample_type = [
-                "laplace",
-                "laplace",
-                "laplace",
-                "laplace",
-                "gaussian",
-                "gaussian",
-                ["laplace"] * 12 + ["gaussian"] * 6,
-            ]
+            sample_type = ["gaussian", "gaussian"]
             pretrain(models, X, y, lrs, sample_type, n_samples=N_to_pretrain)
 
             print("Fitting Models")
@@ -281,17 +154,11 @@ if __name__ == "__main__":
             y[N_to_pretrain:],
             model_names,
             dataset,
-            prefix="Exp3",
-            color_idxs=[0, 1, 2, 3, 8, 9, 10],
+            prefix="Exp4",
         )
 
     plot_summary_nmse(
-        yhat_collection,
-        y_collection,
-        model_names,
-        datasets,
-        prefix="Exp3",
-        color_idxs=[0, 1, 2, 3, 8, 9, 10],
+        yhat_collection, y_collection, model_names, datasets, prefix="Exp4"
     )
     plot_summary_pll(
         yhat_collection,
@@ -299,6 +166,5 @@ if __name__ == "__main__":
         y_collection,
         model_names,
         datasets,
-        prefix="Exp3",
-        color_idxs=[0, 1, 2, 3, 8, 9, 10],
+        prefix="Exp4",
     )

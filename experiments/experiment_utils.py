@@ -11,17 +11,17 @@ import math
 
 
 def get_data(dataset):
-    if dataset == "friedman1":  # 10 dimensional
+    if dataset in ["Friedman #1", "friedman1"]:  # 10 dimensional
         from sklearn.datasets import make_friedman1
 
         X, y = make_friedman1(n_samples=40000, n_features=10, noise=0.1, random_state=0)
         y = (y - y.mean()) / y.std()
-    elif dataset == "friedman2":  # 4 dimensional
+    elif dataset in ["Friedman #2", "friedman2"]:  # 4 dimensional
         from sklearn.datasets import make_friedman2
 
         X, y = make_friedman2(n_samples=40000, noise=1, random_state=0)
         y = (y - y.mean()) / y.std()
-    elif dataset == "elevators":  # 18 dimensional
+    elif dataset.lower() == "elevators":  # 18 dimensional
         data = np.asarray(loadmat("data/elevators.mat")["data"])
         X = data[:, :-3]
         X = np.hstack([X, data[:, -2:-1]])
@@ -32,7 +32,7 @@ def get_data(dataset):
         X = sarcos_data[:, :21]
 
         y = sarcos_data[:, 21]
-    elif dataset == "kuka1":  # 21 dimensional
+    elif dataset in ["Kuka #1", "kuka1"]:  # 21 dimensional
         df = pd.read_csv("data/kuka1_offline.txt", sep=" ", header=None)
         X = df.iloc[:, :21].values
         y = df.iloc[:, 21].values
@@ -40,9 +40,9 @@ def get_data(dataset):
         df = pd.read_csv("data/kuka1_online.txt", sep=" ", header=None)
         X = np.concatenate([X, df.iloc[:, :21].values])
         y = np.concatenate([y, df.iloc[:, 21].values])
-    elif dataset == "cadata":  # 8 dimensional
+    elif dataset.lower() == "cadata":  # 8 dimensional
         X, y = fetch_libsvm("cadata")
-    elif dataset == "cpusmall":  # 12 dimensional
+    elif dataset.lower() in ["cpu small", "cpusmall"]:  # 12 dimensional
         X, y = fetch_libsvm("cpusmall")
     else:
         raise NotImplementedError
@@ -72,9 +72,13 @@ def plot_results(yhats, yvars, y_true, model_names, dataset_name, prefix):
         err = np.cumsum((y_true - yhats[model_idx]) ** 2) / np.arange(
             1, y_true.shape[0] + 1
         )
+
         m = max(m, np.max(err[1000:]))
         plt.plot(
-            err, label=model_name, linestyle="--", dashes=(primes[model_idx] - 1, 1)
+            err / y_true.var(),
+            label=model_name,
+            linestyle="--",
+            dashes=(primes[model_idx] - 1, 1),
         )
     m = min(m, 1.0)
 
@@ -132,11 +136,13 @@ def plot_results_avg(
 
     m = 0
     for model_idx, model_name in enumerate(model_names):
-        err = np.cumsum(
-            (y_true.reshape(1, -1) - yhats[:, model_idx]) ** 2, axis=1
-        ) / np.reshape(np.arange(1, y_true.shape[0] + 1), (1, -1))
+        err = np.cumsum((y_true.reshape(1, -1) - yhats[:, model_idx]) ** 2, axis=1) / (
+            np.reshape(np.arange(1, y_true.shape[0] + 1), (1, -1)) * y_true.var()
+        )
+
         err_mean = np.mean(err, axis=0)[::freq]
         err_std = np.std(err, axis=0)[::freq]
+
         m = max(m, np.max(err_mean[1000 // freq :]))
         plt.plot(
             np.arange(len(err_mean)) * freq,
@@ -307,19 +313,20 @@ if __name__ == "__main__":
     # sns.set_style('whitegrid')
     sns.set_palette("colorblind")
 
-    model_names = [
-        "DOE-HSGP",
-        "OE-HSGP",
-        "DOE-RFF",
-        "OE-RFF",
-        "DOE-RBF",
-        "OE-RBF",
-        "S-DOEBE",
-    ]
+    # model_names = [
+    #     "DOE-HSGP",
+    #     "OE-HSGP",
+    #     "DOE-RFF",
+    #     "OE-RFF",
+    #     "DOE-RBF",
+    #     "OE-RBF",
+    #     "S-DOEBE",
+    # ]
+    model_names = ["DOE-RFF", "DOE-OFF"]
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + [
         [0.75, 0.75, 0.75]
     ]
-    idxs = [0, 1, 2, 3, 8, 9, 10]
+    idxs = [0, 1]  # , 2, 3, 8, 9, 10]
     colors = [color_cycle[i] for i in idxs]
 
     def f(m, c):
@@ -338,7 +345,7 @@ if __name__ == "__main__":
     )
 
     def export_legend(
-        legend, filename="plots/Appendix_Exp3_Legend.pdf", expand=[-5, -0, 5, 0]
+        legend, filename="plots/Appendix_Exp4_Legend.pdf", expand=[-5, -0, 5, 0]
     ):
         fig = legend.figure
         fig.canvas.draw()
