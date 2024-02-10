@@ -57,7 +57,8 @@ class DOBE(ABC, ObjaxModuleWithDeepCopy):
     def mnll(self, X: Float[Array, "N D"], y: Float[Array, "N"]) -> Float[Array, "1"]:
         """Calculates the marginal negative log likelihood (MNLL) using an optimized version of Eq (3.86) of [1]
 
-        [1] Bishop, PRML
+        [1] Bishop, Christopher (2006).
+            Pattern Recognition and Machine Learning (Information Science and Statistics). Springer-Verlag.
 
         Args:
             X (Float[Array, "N D"]): Input data
@@ -186,10 +187,13 @@ class DOGP(DOBE):
         train_frequencies: bool = False,
     ):
         """Creates the DO-RFF model using the random Fourier feature (also known as the sparse spectrum) approximation to Gaussian processes [1].
-        If lengthscales and frequencies are not trained, this is equivalent to the model of Li et al. [2].
+        If lengthscales and frequencies are not trained, this is equivalent to the model of Lu et al. [2].
 
-        [1] Lazaro-Gredilla et al.
-        [2] Li et al.
+        [1] Lázaro-Gredilla, M., Quinonero-Candela, J., Rasmussen, C. E., & Figueiras-Vidal, A. R. (2010).
+            Sparse spectrum Gaussian process regression. The Journal of Machine Learning Research, 11, 1865-1881
+        [2] Lu, Q., Karanikolas, G. V., & Giannakis, G. B. (2022).
+            Incremental ensemble Gaussian processes. IEEE Transactions on Pattern Analysis and Machine Intelligence, 45(2), 1876-1893.
+
 
         Args:
             n_rff (int): number of random Fourier features to use
