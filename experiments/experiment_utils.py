@@ -171,6 +171,60 @@ def plot_results_avg(
         f"plots/{prefix}_NMSE_Avg_" + dataset_name + ".pdf", bbox_inches="tight"
     )
 
+    plt.clf()
+    plt.cla()
+    fig = plt.gcf()
+    ax = plt.gca()
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+    fig.set_size_inches(4, 4)
+    primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 27, 33]
+
+    p_min = np.inf
+    p_max = -np.inf
+
+    for model_idx, model_name in enumerate(model_names):
+        print(yhats.shape, yvars.shape)
+        pll = jnp.cumsum(
+            jax.vmap(jax.scipy.stats.norm.logpdf, in_axes=(None, 0, 0))(
+                y_true, yhats[:, model_idx], jnp.sqrt(yvars[:, model_idx])
+            ),
+            axis=1,
+        ) / np.reshape(np.arange(1, y_true.shape[0] + 1), (1, -1))
+        pll = np.nan_to_num(pll, nan=-np.inf)
+
+        err_mean = np.mean(pll, axis=0)[::freq]
+        err_std = np.std(pll, axis=0)[::freq]
+
+        print(err_mean.shape)
+        print(err_std.shape)
+
+        p_min = min(np.min((err_mean - 2 * err_std)[3:]), p_min)
+        p_max = max(np.max((err_mean + 2 * err_std)[3:]), p_max)
+
+        plt.plot(
+            np.arange(len(err_mean)) * freq,
+            err_mean,
+            label=model_name,
+            linestyle="--",
+            dashes=(primes[model_idx] - 1, 1),
+            color=color_cycle[color_idxs[model_idx]],
+        )
+        plt.fill_between(
+            np.arange(len(err_mean)) * freq,
+            err_mean - err_std,
+            err_mean + err_std,
+            alpha=0.5,
+            color=color_cycle[color_idxs[model_idx]],
+        )
+
+    plt.title(dataset_name)
+    plt.xlim(0, len(y_true))
+    plt.ylim(p_min - (p_max - p_min) / 10, p_max + (p_max - p_min) / 10)
+    plt.ylabel("Average PLL")
+    plt.xlabel("Number of Data Points Seen")
+
+    plt.savefig(f"plots/{prefix}_PLL_Avg_" + dataset_name + ".pdf", bbox_inches="tight")
+
 
 def plot_summary_nmse(
     yhat_collection,
@@ -269,6 +323,7 @@ def plot_summary_pll(
         np.savetxt(f"results/{prefix}_{dataset}_pll.out", pll)
         pll_mean = np.mean(pll, axis=0)
         pll_std = np.std(pll, axis=0)
+        print(pll_mean.shape)
         print(pll_mean, pll_std)
 
         plt.bar(
@@ -322,11 +377,18 @@ if __name__ == "__main__":
     #     "OE-RBF",
     #     "S-DOEBE",
     # ]
-    model_names = ["DOE-RFF", "DOE-OFF"]
+    # model_names = ["DOE-RFF", "DOE-OFF"]
+    # color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + [
+    #     [0.75, 0.75, 0.75]
+    # ]
+    # idxs = [0, 1]  # , 2, 3, 8, 9, 10]
+    # colors = [color_cycle[i] for i in idxs]
+    deltas = [0.01, 0.05, 0.1, 0.2]
+    model_names = [f"$\delta={delta}$" for delta in deltas]
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + [
         [0.75, 0.75, 0.75]
     ]
-    idxs = [0, 1]  # , 2, 3, 8, 9, 10]
+    idxs = [0, 1, 2, 3]  # , 2, 3, 8, 9, 10]
     colors = [color_cycle[i] for i in idxs]
 
     def f(m, c):
@@ -337,7 +399,7 @@ if __name__ == "__main__":
     legend = plt.legend(
         handles,
         labels,
-        ncol=3,  # int(math.ceil(len(model_names) / 2)),
+        ncol=4,  # int(math.ceil(len(model_names) / 2)),
         loc=3,
         framealpha=1,
         frameon=True,
@@ -345,7 +407,7 @@ if __name__ == "__main__":
     )
 
     def export_legend(
-        legend, filename="plots/Appendix_Exp4_Legend.pdf", expand=[-5, -0, 5, 0]
+        legend, filename="plots/ExpWithDelta_Legend.pdf", expand=[-5, -0, 5, 0]
     ):
         fig = legend.figure
         fig.canvas.draw()
@@ -356,12 +418,12 @@ if __name__ == "__main__":
 
     export_legend(legend)
 
-    yhat_collection = [np.random.randn(3, 100), np.random.randn(3, 100)]
-    yvar_collection = [np.random.randn(3, 100) ** 2, np.random.randn(3, 100) ** 2]
-    y_collection = [np.random.randn(100), np.random.randn(100)]
-    model_names = ["model1", "model2", "model3"]
-    datasets = ["dataset1", "dataset2"]
-    plot_summary_nmse(yhat_collection, y_collection, model_names, datasets)
-    plot_summary_pll(
-        yhat_collection, yvar_collection, y_collection, model_names, datasets
-    )
+    # yhat_collection = [np.random.randn(3, 100), np.random.randn(3, 100)]
+    # yvar_collection = [np.random.randn(3, 100) ** 2, np.random.randn(3, 100) ** 2]
+    # y_collection = [np.random.randn(100), np.random.randn(100)]
+    # model_names = ["model1", "model2", "model3"]
+    # datasets = ["dataset1", "dataset2"]
+    # plot_summary_nmse(yhat_collection, y_collection, model_names, datasets)
+    # plot_summary_pll(
+    #     yhat_collection, yvar_collection, y_collection, model_names, datasets
+    # )
