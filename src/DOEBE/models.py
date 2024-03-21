@@ -114,7 +114,9 @@ class DOBE(ABC, ObjaxModuleWithDeepCopy):
 
         phi_x = self.featurize(X)
         mu_yhat = phi_x.T @ self.theta_hat
-        cov_yhat = phi_x.T @ sigma_hat @ phi_x + self.var_eps * jnp.eye(phi_x.shape[1])
+        cov_yhat = phi_x.T @ sigma_theta @ phi_x + self.var_eps * jnp.eye(
+            phi_x.shape[1]
+        )
 
         return mu_yhat, cov_yhat
 
