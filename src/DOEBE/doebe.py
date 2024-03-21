@@ -115,10 +115,13 @@ class DOEBE(objax.Module):
                             hess[i][j] = jnp.atleast_2d(hess[i][j]).T
 
                 # Construct Hessians, and factor them with the SVD to generate random samples
+                # Notice that since if H = U S V^*, H^-1 = V S^-1 U^*, we can speed up calculations
+                # by only computing the SVD once.
                 hess_matrix = jnp.block(hess)
-                hess_inv = jnp.linalg.pinv(hess_matrix)
-                u, s, _ = jnp.linalg.svd(hess_inv)
-                inv_hess_factor = u @ jnp.diag(jnp.sqrt(s))
+                _, s, vh = jnp.linalg.svd(hess_matrix)
+                inv_hess_factor = vh.T @ jnp.diag(
+                    1 / jnp.clip(jnp.sqrt(s), a_min=1e-16)
+                )
 
                 # Make samples by making a deep copy, randomly sampling from the Laplace approx, and changing the copy
                 for n_sample in range(n_samples - 1):
