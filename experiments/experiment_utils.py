@@ -7,7 +7,7 @@ import numpy as np
 from typing import Any, List
 import matplotlib.pyplot as plt
 import seaborn as sns
-import math
+from uci_datasets import Dataset
 
 
 def get_data(dataset):
@@ -44,6 +44,33 @@ def get_data(dataset):
         X, y = fetch_libsvm("cadata")
     elif dataset.lower() in ["cpu small", "cpusmall"]:  # 12 dimensional
         X, y = fetch_libsvm("cpusmall")
+    elif dataset.lower() in [
+        "autos",
+        "servo",
+        "machine",
+        "yacht",
+        "autompg",
+        "housing",
+        "stock",
+        "energy",
+        "concrete",
+        "airfoil",
+        "gas",
+        "skillcraft",
+        "sml",
+        "pol",
+        "elevators",
+        "bike",
+        "kin40k",
+    ]:
+        dset = Dataset(dataset)
+        X, y = dset.x, dset.y.squeeze()
+
+        # Remove dimensions that are just 0
+        if dataset.lower() == "sml":
+            X = np.delete(X, [2, 20, 21, 22], axis=1)
+        elif dataset.lower() == "autos":
+            X = np.delete(X, [8], axis=1)
     else:
         raise NotImplementedError
 
@@ -143,7 +170,7 @@ def plot_results_avg(
         err_mean = np.mean(err, axis=0)[::freq]
         err_std = np.std(err, axis=0)[::freq]
 
-        m = max(m, np.max(err_mean[1000 // freq :]))
+        m = max(m, np.max(err_mean[2 // freq :]))
         plt.plot(
             np.arange(len(err_mean)) * freq,
             err_mean,
@@ -183,7 +210,6 @@ def plot_results_avg(
     p_max = -np.inf
 
     for model_idx, model_name in enumerate(model_names):
-        print(yhats.shape, yvars.shape)
         pll = jnp.cumsum(
             jax.vmap(jax.scipy.stats.norm.logpdf, in_axes=(None, 0, 0))(
                 y_true, yhats[:, model_idx], jnp.sqrt(yvars[:, model_idx])
@@ -194,9 +220,6 @@ def plot_results_avg(
 
         err_mean = np.mean(pll, axis=0)[::freq]
         err_std = np.std(pll, axis=0)[::freq]
-
-        print(err_mean.shape)
-        print(err_std.shape)
 
         p_min = min(np.min((err_mean - 2 * err_std)[3:]), p_min)
         p_max = max(np.max((err_mean + 2 * err_std)[3:]), p_max)
@@ -383,8 +406,14 @@ if __name__ == "__main__":
     # ]
     # idxs = [0, 1]  # , 2, 3, 8, 9, 10]
     # colors = [color_cycle[i] for i in idxs]
-    deltas = [0.01, 0.05, 0.1, 0.2]
-    model_names = [f"$\delta={delta}$" for delta in deltas]
+    # deltas = [0.01, 0.05, 0.1, 0.2]
+    # model_names = [f"$\delta={delta}$" for delta in deltas]
+    model_names = [
+        "DOE-HSGP",
+        "OE-HSGP",
+        "DOE-RFF",
+        "OE-RFF",
+    ]
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + [
         [0.75, 0.75, 0.75]
     ]
@@ -407,7 +436,7 @@ if __name__ == "__main__":
     )
 
     def export_legend(
-        legend, filename="plots/ExpWithDelta_Legend.pdf", expand=[-5, -0, 5, 0]
+        legend, filename="plots/ExpWithHighDims_Legend.pdf", expand=[-5, -0, 5, 0]
     ):
         fig = legend.figure
         fig.canvas.draw()
