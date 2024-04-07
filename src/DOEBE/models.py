@@ -9,6 +9,8 @@ from typing import Tuple
 import objax
 from .utils import softplus, softplus_inv, ObjaxModuleWithDeepCopy
 import math
+from scipy.stats import qmc
+import numpy as np
 
 
 class DOBE(ABC, ObjaxModuleWithDeepCopy):
@@ -248,6 +250,33 @@ class DOGP(DOBE):
         return jnp.vstack([jnp.cos(freqs_times_x), jnp.sin(freqs_times_x)]) / jnp.sqrt(
             self.n_features // 2
         )
+
+
+class DOGP_QMC(DOGP):
+    def sample_frequencies(self, kernel_type: str) -> Float[Array, "F D"]:
+        """Samples frequencies for the RFF approximation from the kernel
+
+        Args:
+            kernel_type (str): type of kernel
+
+        Raises:
+            NotImplementedError: if unsupported kernel type is used
+
+        Returns:
+            Float[Array, "F D"]: random Fourier frequencies
+        """
+        if kernel_type in ["rbf", "se"]:
+            engine = qmc.Halton(d=self.d_in, scramble=True)
+            return jnp.asarray(
+                qmc.MultivariateNormalQMC(
+                    mean=np.ones(
+                        self.d_in,
+                    ),
+                    engine=engine,
+                ).random(self.n_features // 2)
+            )
+        else:
+            raise NotImplementedError(f"Kernel type {kernel_type} not yet implemented")
 
 
 class DORBF(DOBE):
