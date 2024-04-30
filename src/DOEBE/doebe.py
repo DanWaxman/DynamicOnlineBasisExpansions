@@ -31,6 +31,7 @@ class DOEBE(objax.Module):
         lr: float = 1e-2,
         iters: int = 500,
         verbose: bool = False,
+        jit: bool = True,
     ):
         """Pretrains models by maximizing the marginal likelihood, using Adam.
 
@@ -48,6 +49,7 @@ class DOEBE(objax.Module):
             gv = objax.GradValues(
                 self.models[model_idx].mnll, self.models[model_idx].vars()
             )
+            last_val = jnp.inf
 
             @objax.Function.with_vars(
                 self.models[model_idx].vars() + gv.vars() + opt.vars()
@@ -57,12 +59,17 @@ class DOEBE(objax.Module):
                 opt(lr, df)
                 return f
 
-            train_op = objax.Jit(train_op)
+            if jit:
+                train_op = objax.Jit(train_op)
 
             for iter_idx in range(iters):
                 f_value = train_op()
                 if (iter_idx % 100 == 0 or iter_idx == iters - 1) and verbose:
                     print(iter_idx, f_value)
+
+                if last_val - f_value[0] < 1e-10:
+                    break
+                last_val = f_value[0]
 
             self.models[model_idx].sigma_theta = self.models[
                 model_idx
@@ -77,6 +84,7 @@ class DOEBE(objax.Module):
         verbose: bool = False,
         n_samples: int = 10,
         sampling_type: str = "laplace",
+        jit=True,
     ):
         """Pretrains models by maximizing the marginal likelihood, using Adam.
 
@@ -93,7 +101,7 @@ class DOEBE(objax.Module):
         """
 
         # First, pretrain the models
-        self.pretrain(X, y, lr=lr, iters=iters, verbose=verbose)
+        self.pretrain(X, y, lr=lr, iters=iters, verbose=verbose, jit=jit)
 
         if type(sampling_type) is str:
             sampling_type = [sampling_type] * len(self.models)

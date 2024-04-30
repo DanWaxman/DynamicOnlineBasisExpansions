@@ -166,3 +166,6 @@ cython_debug/
 *.out
 doebe_env*
 experiments/data
+experiments/results
+experiments/scratch.ipynb
+experiments/plots

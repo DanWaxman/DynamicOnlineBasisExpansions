@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from cycler import K
 import jax.numpy as jnp
 import jax
 
@@ -41,7 +42,7 @@ class DOBE(ABC, ObjaxModuleWithDeepCopy):
         self.var_rw = objax.StateVar(jnp.array(var_rw))
 
         self.mu_theta = objax.StateVar(jnp.zeros((self.n_features, 1)))
-        self.sigma_theta = self.mu_theta * jnp.eye(self.n_features)
+        self.sigma_theta = self.var_theta * jnp.eye(self.n_features)
 
     @property
     def var_theta(self):
@@ -115,7 +116,7 @@ class DOBE(ABC, ObjaxModuleWithDeepCopy):
         sigma_theta = self.sigma_theta + self.var_rw * jnp.eye(self.n_features)
 
         phi_x = self.featurize(X)
-        mu_yhat = phi_x.T @ self.theta_hat
+        mu_yhat = phi_x.T @ self.mu_theta
         cov_yhat = phi_x.T @ sigma_theta @ phi_x + self.var_eps * jnp.eye(
             phi_x.shape[1]
         )
