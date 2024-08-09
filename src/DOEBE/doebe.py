@@ -225,16 +225,17 @@ class DOEBE(objax.Module):
             # Mark as inactive
             log_w = jnp.where(carry < jnp.log(1e-16), -jnp.inf, carry)
 
-            ell = -jax.scipy.special.logsumexp(log_w - ls[i])
+            ell = -jax.scipy.special.logsumexp(log_w - ls[i - 1])
 
-            log_w = log_w + (ell - ls[i])
+            log_w = log_w + (ell - ls[i - 1])
 
             return log_w, log_w
 
         final_log_w, log_ws = lax.scan(
-            _step_weights, jnp.log(self.w), jnp.arange(X.shape[0])
+            _step_weights, jnp.log(self.w), jnp.arange(1, X.shape[0] + 1)
         )
 
+        log_ws = jnp.concatenate([self.w.reshape(1, -1), log_ws[:-1]], axis=0)
         self.w = jnp.exp(final_log_w)
 
         ymean = jnp.sum(jnp.exp(log_ws) * yhat, axis=1)
